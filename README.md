@@ -31,7 +31,7 @@ To use this module for the internal domain overwrite, together with [mholt/caddy
 				"entry_description": "Managed by Caddy"
 			},
 			"domains": {
-				"example.com": ["@"]
+				"example.com": [""]
 			},
 			"ip_sources": [
 				{
@@ -66,7 +66,7 @@ or with the Caddyfile:
 			entry_description Managed by Caddy # Optional
 		}
 		domains {
-			example.com @
+			example.com
 		}
 		dynamic_domains
 		ip_source interface eth0
@@ -91,7 +91,7 @@ Here an example using porkbun, but you can use any of the available [caddy-dns](
 			insecure # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
-			example.com @
+			example.com
 		}
 		dynamic_domains
 		ip_source interface eth0
@@ -123,7 +123,7 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 			insecure # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
-			example.com @
+			example.com
 		}
 		dynamic_domains
 		ip_source static {env.DOCKER_HOST_IP}
