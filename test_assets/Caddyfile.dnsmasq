@@ -10,9 +10,8 @@
 			entry_description "Managed by Caddy Test"
 		}
 		domains {
-			example.com
+			example.com test
 		}
-		dynamic_domains
 		ip_source static 192.168.42.23
 		check_interval 1s
 		ttl 1h
