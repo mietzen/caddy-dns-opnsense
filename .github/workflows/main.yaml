@@ -51,8 +51,8 @@ jobs:
 
       - name: Build test tools
         run: |
-          go build -o test_assets/mock_opnsense test_assets/mock_opnsense.go
-          go build -o test_assets/validate_requests test_assets/validate_requests.go
+          go build -o test_assets/mock_opnsense ./test_assets/mock_server
+          go build -o test_assets/validate_requests ./test_assets/validator
 
       - name: Integration test - dnsmasq
         run: |
