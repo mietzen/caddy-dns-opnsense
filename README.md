@@ -1,7 +1,7 @@
 # OPNsense module for Caddy
 
 This package contains a DNS provider module for [Caddy](https://github.com/caddyserver/caddy). It is used to manage DNS records in [OPNsense](https://opnsense.org/#) dnsmasq or unbound.
-You can combine it with Caddys DNS-01 ACME challange to get valid TLS certs for internal domains.
+You can combine it with Caddys DNS-01 ACME challenge to get valid TLS certs for internal domains.
 
 [![Go Reference](https://pkg.go.dev/badge/test.svg)](https://pkg.go.dev/github.com/mietzen/caddy-dns-opnsense)
 
@@ -132,4 +132,35 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 		api_secret_key {env.PORKBUN_API_SECRET_KEY}
 	}
 }
+```
+
+## Building with `xcaddy`
+
+Use [`xcaddy`](https://caddyserver.com/docs/build#xcaddy) to build the module:
+
+```
+xcaddy build \
+    --with github.com/mietzen/caddy-dns-opnsense \
+    --with github.com/mietzen/libdns-opnsense-dnsmasq \
+    --with github.com/mietzen/libdns-opnsense-unbound \
+    --with github.com/mholt/caddy-dynamicdns
+```
+
+You don't have to buildin both providers you can just use the one you use, e.g. `dnsmasq`:
+
+```
+xcaddy build \
+    --with github.com/mietzen/caddy-dns-opnsense \
+    --with github.com/mietzen/libdns-opnsense-dnsmasq \
+    --with github.com/mholt/caddy-dynamicdns
+```
+
+You also will most likely add your DNS Provider for ACME, here `porkbun`:
+
+```
+xcaddy build \
+    --with github.com/mietzen/caddy-dns-opnsense \
+    --with github.com/mietzen/libdns-opnsense-dnsmasq \
+    --with github.com/mholt/caddy-dynamicdns \
+    --with github.com/caddy-dns/porkbun
 ```
