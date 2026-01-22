@@ -10,6 +10,7 @@ import (
 	"github.com/libdns/libdns"
 	opnsensednsmasq "github.com/mietzen/libdns-opnsense-dnsmasq"
 	opnsenseunbound "github.com/mietzen/libdns-opnsense-unbound"
+	"go.uber.org/zap"
 )
 
 // dnsProvider is the interface that both dnsmasq and unbound providers implement
@@ -81,6 +82,18 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 	default:
 		return fmt.Errorf("invalid dns_service %q: must be 'dnsmasq' or 'unbound'", p.DNSService)
 	}
+
+	logger := ctx.Logger()
+
+	logger.Info("OPNsense DNS provider initialized",
+		zap.String("dns_service", strings.ToLower(p.DNSService)),
+	)
+
+	logger.Debug("OPNsense DNS provider configuration",
+		zap.String("host", p.Host),
+		zap.Bool("insecure", p.Insecure),
+		zap.String("entry_description", p.EntryDescription),
+	)
 
 	return nil
 }

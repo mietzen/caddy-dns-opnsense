@@ -6,3 +6,4 @@ Caddyfile
 certificates/*
 conf.d/*
 last_clean.json
+buildenv_*
