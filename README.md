@@ -1,43 +1,49 @@
-DEVELOPER INSTRUCTIONS:
-=======================
+# OPNsense module for Caddy
+=================================
 
-- Update module name in go.mod
-- Update dependencies to latest versions (**EXCEPT `caddy/v2` ITSELF**)
-- Update name and year in license
-- Customize configuration and Caddyfile parsing
-- Update godocs / comments (especially provider name and nuances)
-- Update README and remove this section
+This package contains a DNS provider module for [Caddy](https://github.com/caddyserver/caddy). It is used to manage DNS records in [OPNsense](https://opnsense.org/#) dnsmasq or unbound.
+You can combine it with Caddys DNS-01 ACME challange to get valid TLS certs for internal domains.
 
-Thank you for maintaining your Caddy plugin!
-
-_Remove this section before publishing._
-
----
-
-\<PROVIDER\> module for Caddy
-===========================
-
-This package contains a DNS provider module for [Caddy](https://github.com/caddyserver/caddy). It can be used to manage DNS records with \<PROVIDER\>.
+[![Go Reference](https://pkg.go.dev/badge/test.svg)](https://pkg.go.dev/github.com/mietzen/caddy-dns-opnsense)
 
 ## Caddy module name
 
 ```
-dns.providers.provider_name
+dns.providers.opnsense
 ```
 
 ## Config examples
 
-To use this module for the ACME DNS challenge, [configure the ACME issuer in your Caddy JSON](https://caddyserver.com/docs/json/apps/tls/automation/policies/issuer/acme/) like so:
+To use this module for the internal domain overwrite, together with [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns), with the `dynamic_domains` option like so:
+
+`dns_service` can be `dnsmasq` or `unbound`
 
 ```json
 {
-	"module": "acme",
-	"challenges": {
-		"dns": {
-			"provider": {
-				"name": "provider_name",
-				"api_token": "YOUR_PROVIDER_API_TOKEN"
-			}
+	"apps": {
+		"dynamic_dns": {
+			"dns_provider": {
+				"name": "opnsense",
+				"api_key": "{env.OPNSENSE_API_KEY}",
+				"api_secret_key": "{env.OPNSENSE_API_SECRET_KEY}",
+				"dns_service": "dnsmasq"
+			},
+			"domains": {
+				"example.com": ["@"]
+			},
+			"ip_sources": [
+				{
+					"source": "interface",
+					"name": "eth0"
+				}
+			],
+			"check_interval": "5m",
+			"versions": {
+				"ipv4": true,
+				"ipv6": true
+			},
+			"ttl": "1h",
+			"dynamic_domains": true
 		}
 	}
 }
@@ -45,16 +51,76 @@ To use this module for the ACME DNS challenge, [configure the ACME issuer in you
 
 or with the Caddyfile:
 
-```
+```text
 # globally
 {
-	acme_dns provider_name ...
+	dynamic_dns {
+		provider opnsense {
+			api_key {env.OPNSENSE_API_KEY}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
+			dns_service dnsmasq # or unbound
+		}
+		domains {
+			example.com @
+		}
+		dynamic_domains
+		ip_source interface eth0
+		check_interval 5m
+		ttl 1h
+	}
 }
 ```
 
+### Valid local TLS Certs
+
+Here an example using porkbun, but you can use any of the available [caddy-dns](https://github.com/caddy-dns) providers:
+
+```text
+{
+	dynamic_dns {
+		provider opnsense {
+			api_key {env.OPNSENSE_API_KEY}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
+			dns_service dnsmasq # or unbound
+		}
+		domains {
+			example.com @
+		}
+		dynamic_domains
+		ip_source interface eth0
+		check_interval 5m
+		ttl 1h
+	}
+	acme_dns porkbun {
+		api_key {env.PORKBUN_API_KEY}
+		api_secret_key {env.PORKBUN_API_SECRET_KEY}
+	}
+}
 ```
-# one site
-tls {
-	dns provider_name ...
+
+### Docker usage
+
+If you want to use this inside a docker container use the `static` `ip_source` module to set the IP of the docker Host
+
+```text
+{
+	dynamic_dns {
+		provider opnsense {
+			api_key {env.OPNSENSE_API_KEY}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
+			dns_service dnsmasq # or unbound
+		}
+		domains {
+			example.com @
+		}
+		dynamic_domains
+		ip_source static {env.DOCKER_HOST_IP}
+		check_interval 5m
+		ttl 1h
+	}
+	acme_dns porkbun {
+		api_key {env.PORKBUN_API_KEY}
+		api_secret_key {env.PORKBUN_API_SECRET_KEY}
+	}
 }
 ```
