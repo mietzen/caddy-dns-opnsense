@@ -55,7 +55,7 @@ func main() {
 func handleRequest(w http.ResponseWriter, r *http.Request) {
 	// Read body
 	body, _ := io.ReadAll(r.Body)
-	defer r.Body.Close()
+	defer func() { _ = r.Body.Close() }()
 
 	// Log the request
 	headers := make(map[string]string)
@@ -88,7 +88,7 @@ func handleRequest(w http.ResponseWriter, r *http.Request) {
 		handleUnbound(w, r, body)
 	default:
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "not found"})
 	}
 }
 
@@ -98,29 +98,29 @@ func handleDnsmasq(w http.ResponseWriter, r *http.Request, body []byte) {
 	switch {
 	case path == "settings/search_host" && r.Method == http.MethodGet:
 		// Return empty list initially - Caddy will add records
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"rows": []interface{}{},
 		})
 
 	case path == "settings/add_host" && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "saved",
 			"uuid":   "test-uuid-001",
 		})
 
 	case strings.HasPrefix(path, "settings/del_host/") && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "deleted",
 		})
 
 	case path == "service/reconfigure" && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "ok",
 		})
 
 	default:
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
 	}
 }
 
@@ -130,29 +130,29 @@ func handleUnbound(w http.ResponseWriter, r *http.Request, body []byte) {
 	switch {
 	case path == "settings/search_host_override" && r.Method == http.MethodPost:
 		// Return empty list initially - Caddy will add records
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"rows": []interface{}{},
 		})
 
 	case path == "settings/add_host_override" && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "saved",
 			"uuid":   "test-uuid-001",
 		})
 
 	case strings.HasPrefix(path, "settings/del_host_override/") && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "deleted",
 		})
 
 	case path == "service/reconfigure" && r.Method == http.MethodPost:
-		json.NewEncoder(w).Encode(map[string]string{
+		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "ok",
 		})
 
 	default:
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "endpoint not found"})
 	}
 }
 
