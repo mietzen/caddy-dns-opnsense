@@ -1,0 +1,23 @@
+{
+	auto_https off
+	dynamic_dns {
+		provider opnsense {
+			host {$OPNSENSE_HOST}
+			api_key {$OPNSENSE_API_KEY}
+			api_secret_key {$OPNSENSE_API_SECRET}
+			dns_service unbound
+			entry_description "Managed by Caddy Test"
+		}
+		domains {
+			example.com
+		}
+		dynamic_domains
+		ip_source static 192.168.42.23
+		check_interval 1s
+		ttl 1h
+	}
+}
+
+http://test.example.com:8080 {
+	respond "Caddy unbound test server"
+}

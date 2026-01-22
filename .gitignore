@@ -7,3 +7,8 @@ certificates/*
 conf.d/*
 last_clean.json
 buildenv_*
+caddy-dns-opnsense.code-workspace
+locks/*
+test_assets/mock_opnsense
+test_assets/validate_requests
+test_assets/requests_*.json

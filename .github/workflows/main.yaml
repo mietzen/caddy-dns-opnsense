@@ -1,0 +1,118 @@
+name: Build & Test
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
+      - name: Cache Go modules
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+
+      - name: Download dependencies
+        run: go mod tidy
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Build Caddy with modules
+        run: |
+          go install github.com/caddyserver/xcaddy/cmd/xcaddy@latest
+          xcaddy build \
+              --with github.com/mietzen/caddy-dns-opnsense=. \
+              --with github.com/mietzen/libdns-opnsense-dnsmasq \
+              --with github.com/mietzen/libdns-opnsense-unbound \
+              --with github.com/mholt/caddy-dynamicdns
+
+      - name: Build test tools
+        run: |
+          go build -o test_assets/mock_opnsense test_assets/mock_opnsense.go
+          go build -o test_assets/validate_requests test_assets/validate_requests.go
+
+      - name: Integration test - dnsmasq
+        run: |
+          echo "Starting mock OPNsense API server for dnsmasq..."
+          ./test_assets/mock_opnsense -port 8443 -log test_assets/requests_dnsmasq.json &
+          MOCK_PID=$!
+          sleep 1
+
+          echo "Starting Caddy with dnsmasq config..."
+          OPNSENSE_HOST=localhost:8443 \
+          OPNSENSE_API_KEY=test-api-key \
+          OPNSENSE_API_SECRET=test-api-secret \
+          ./caddy run --config test_assets/Caddyfile.dnsmasq &
+          CADDY_PID=$!
+
+          echo "Waiting for dynamic DNS update cycle..."
+          sleep 5
+
+          echo "Stopping Caddy..."
+          kill $CADDY_PID 2>/dev/null || true
+          sleep 1
+
+          echo "Stopping mock server..."
+          kill $MOCK_PID 2>/dev/null || true
+
+          echo "Validating requests..."
+          ./test_assets/validate_requests -log test_assets/requests_dnsmasq.json -service dnsmasq
+
+      - name: Integration test - unbound
+        run: |
+          echo "Starting mock OPNsense API server for unbound..."
+          ./test_assets/mock_opnsense -port 8443 -log test_assets/requests_unbound.json &
+          MOCK_PID=$!
+          sleep 1
+
+          echo "Starting Caddy with unbound config..."
+          OPNSENSE_HOST=localhost:8443 \
+          OPNSENSE_API_KEY=test-api-key \
+          OPNSENSE_API_SECRET=test-api-secret \
+          ./caddy run --config test_assets/Caddyfile.unbound &
+          CADDY_PID=$!
+
+          echo "Waiting for dynamic DNS update cycle..."
+          sleep 5
+
+          echo "Stopping Caddy..."
+          kill $CADDY_PID 2>/dev/null || true
+          sleep 1
+
+          echo "Stopping mock server..."
+          kill $MOCK_PID 2>/dev/null || true
+
+          echo "Validating requests..."
+          ./test_assets/validate_requests -log test_assets/requests_unbound.json -service unbound
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: |
+            test_assets/requests_dnsmasq.json
+            test_assets/requests_unbound.json
