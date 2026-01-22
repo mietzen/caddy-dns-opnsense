@@ -5,8 +5,8 @@ go 1.25
 require (
 	github.com/caddyserver/caddy/v2 v2.10.2
 	github.com/libdns/libdns v1.1.1
-	github.com/mietzen/libdns-opnsense-dnsmasq v0.0.0-20260122090142-8b456bf45d33
-	github.com/mietzen/libdns-opnsense-unbound v0.0.0-20260122085934-6764c3b596b2
+	github.com/mietzen/libdns-opnsense-dnsmasq v0.0.0-20260122103845-f10279955d94
+	github.com/mietzen/libdns-opnsense-unbound v0.0.0-20260122123101-6ee6b3b7a0f7
 )
 
 require (
@@ -29,7 +29,7 @@ require (
 	github.com/zeebo/blake3 v0.2.4 // indirect
 	go.uber.org/mock v0.5.2 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	go.uber.org/zap v1.27.0 // indirect
+	go.uber.org/zap v1.27.1 // indirect
 	go.uber.org/zap/exp v0.3.0 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/mod v0.25.0 // indirect

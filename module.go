@@ -67,6 +67,7 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 			APISecret:   p.APISecretKey,
 			Insecure:    p.Insecure,
 			Description: p.EntryDescription,
+			Logger:      ctx.Logger(),
 		}
 	case "unbound":
 		p.provider = &opnsenseunbound.Provider{
@@ -75,6 +76,7 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 			APISecret:   p.APISecretKey,
 			Insecure:    p.Insecure,
 			Description: p.EntryDescription,
+			Logger:      ctx.Logger(),
 		}
 	default:
 		return fmt.Errorf("invalid dns_service %q: must be 'dnsmasq' or 'unbound'", p.DNSService)
