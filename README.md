@@ -15,7 +15,7 @@ dns.providers.opnsense
 
 To use this module for the internal domain overwrite, together with [mholt/caddy-dynamicdns](https://github.com/mholt/caddy-dynamicdns), with the `dynamic_domains` option like so:
 
-`dns_service` can be `dnsmasq` or `unbound`
+`dns_service` can be [`dnsmasq`](https://github.com/mietzen/libdns-opnsense-dnsmasq) or [`unbound`](https://github.com/mietzen/libdns-opnsense-unbound)
 
 ```json
 {
