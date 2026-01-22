@@ -4,7 +4,9 @@ go 1.25
 
 require (
 	github.com/caddyserver/caddy/v2 v2.10.2
-	github.com/libdns/template v1.0.0
+	github.com/libdns/libdns v1.1.1
+	github.com/mietzen/libdns-opnsense-dnsmasq v0.0.0-20260122090142-8b456bf45d33
+	github.com/mietzen/libdns-opnsense-unbound v0.0.0-20260122085934-6764c3b596b2
 )
 
 require (
@@ -15,7 +17,6 @@ require (
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
-	github.com/libdns/libdns v1.1.0 // indirect
 	github.com/mholt/acmez/v3 v3.1.2 // indirect
 	github.com/miekg/dns v1.1.63 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect

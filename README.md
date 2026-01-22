@@ -1,5 +1,4 @@
 # OPNsense module for Caddy
-=================================
 
 This package contains a DNS provider module for [Caddy](https://github.com/caddyserver/caddy). It is used to manage DNS records in [OPNsense](https://opnsense.org/#) dnsmasq or unbound.
 You can combine it with Caddys DNS-01 ACME challange to get valid TLS certs for internal domains.
@@ -24,9 +23,12 @@ To use this module for the internal domain overwrite, together with [mholt/caddy
 		"dynamic_dns": {
 			"dns_provider": {
 				"name": "opnsense",
+				"host": "{env.OPNSENSE_HOST}",
 				"api_key": "{env.OPNSENSE_API_KEY}",
 				"api_secret_key": "{env.OPNSENSE_API_SECRET_KEY}",
-				"dns_service": "dnsmasq"
+				"dns_service": "dnsmasq",
+				"insecure": true,
+				"entry_description": "Managed by Caddy"
 			},
 			"domains": {
 				"example.com": ["@"]
@@ -56,9 +58,12 @@ or with the Caddyfile:
 {
 	dynamic_dns {
 		provider opnsense {
+			host {env.OPNSENSE_HOST}
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
+			insecure # Optional: skip TLS verification for self-signed certs
+			entry_description Managed by Caddy # Optional
 		}
 		domains {
 			example.com @
@@ -79,9 +84,11 @@ Here an example using porkbun, but you can use any of the available [caddy-dns](
 {
 	dynamic_dns {
 		provider opnsense {
+			host {env.OPNSENSE_HOST}
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
+			insecure # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
 			example.com @
@@ -106,9 +113,11 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 {
 	dynamic_dns {
 		provider opnsense {
+			host {env.OPNSENSE_HOST}
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
+			insecure # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
 			example.com @
