@@ -2,11 +2,18 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"os"
 	"strings"
@@ -39,17 +46,68 @@ func main() {
 	http.HandleFunc("/", handleRequest)
 
 	addr := fmt.Sprintf(":%d", *port)
-	log.Printf("Mock OPNsense API server starting on %s (service: %s)", addr, dnsService)
+	log.Printf("Mock OPNsense API server starting on %s (service: %s) with TLS", addr, dnsService)
+
+	tlsConfig, err := generateSelfSignedTLSConfig()
+	if err != nil {
+		log.Fatalf("Failed to generate TLS config: %v", err)
+	}
 
 	server := &http.Server{
 		Addr:         addr,
+		TLSConfig:    tlsConfig,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	if err := server.ListenAndServe(); err != nil {
+	if err := server.ListenAndServeTLS("", ""); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}
+}
+
+// generateSelfSignedTLSConfig creates a TLS config with a self-signed certificate
+func generateSelfSignedTLSConfig() (*tls.Config, error) {
+	// Generate private key
+	privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate private key: %w", err)
+	}
+
+	// Create certificate template
+	serialNumber, err := rand.Int(rand.Reader, new(big.Int).Lsh(big.NewInt(1), 128))
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate serial number: %w", err)
+	}
+
+	template := x509.Certificate{
+		SerialNumber: serialNumber,
+		Subject: pkix.Name{
+			Organization: []string{"Mock OPNsense"},
+			CommonName:   "localhost",
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		DNSNames:              []string{"localhost"},
+	}
+
+	// Create certificate
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create certificate: %w", err)
+	}
+
+	// Create TLS certificate
+	cert := tls.Certificate{
+		Certificate: [][]byte{certDER},
+		PrivateKey:  privateKey,
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}, nil
 }
 
 func handleRequest(w http.ResponseWriter, r *http.Request) {
