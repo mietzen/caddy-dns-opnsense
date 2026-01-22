@@ -103,6 +103,9 @@ Here an example using porkbun, but you can use any of the available [caddy-dns](
 		api_secret_key {env.PORKBUN_API_SECRET_KEY}
 	}
 }
+test_caddy.example.com {
+	respond "Welcome to caddy!"
+}
 ```
 
 ### Docker usage
@@ -132,7 +135,22 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 		api_secret_key {env.PORKBUN_API_SECRET_KEY}
 	}
 }
+test_caddy.example.com {
+	respond "Welcome to caddy!"
+}
 ```
+
+#### Docker service discovery
+
+You can also combine this with [caddy-docker-proxy](https://github.com/lucaslorentz/caddy-docker-proxy). Use the Caddyfile from above and add lables to you docker containers:
+
+```yml
+    labels:
+        caddy: mycontainer.example.com
+        caddy.reverse_proxy: "{{upstreams 8080}}"
+```
+
+You will automatically get local DNS entries in OPNsense.
 
 ## Building with `xcaddy`
 
