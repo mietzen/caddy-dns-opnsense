@@ -1,1 +1,8 @@
 .DS_Store
+.env
+acme/*
+caddy
+Caddyfile
+certificates/*
+conf.d/*
+last_clean.json
