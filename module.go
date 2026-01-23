@@ -105,7 +105,7 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 //	    api_key <api_key>
 //	    api_secret_key <api_secret_key>
 //	    dns_service <dnsmasq|unbound>
-//	    insecure
+//	    insecure <true|false>
 //	    entry_description <description>
 //	}
 func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
@@ -144,7 +144,10 @@ func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 					return d.ArgErr()
 				}
 			case "insecure":
-				p.Insecure = true
+				if d.NextArg() {
+					val := strings.ToLower(d.Val())
+					p.Insecure = val == "true" || val == "1" || val == "yes" || val == "on"
+				}
 				if d.NextArg() {
 					return d.ArgErr()
 				}
