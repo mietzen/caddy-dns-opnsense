@@ -6,7 +6,7 @@
 			api_key {$OPNSENSE_API_KEY}
 			api_secret_key {$OPNSENSE_API_SECRET}
 			dns_service dnsmasq
-			insecure
+			insecure true
 			entry_description "Managed by Caddy Test"
 		}
 		domains {
