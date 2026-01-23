@@ -2,10 +2,7 @@ package opnsense
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2"
@@ -56,19 +53,14 @@ func (Provider) CaddyModule() caddy.ModuleInfo {
 
 // Provision sets up the module. Implements caddy.Provisioner.
 func (p *Provider) Provision(ctx caddy.Context) error {
-	logger := ctx.Logger()
 	repl := caddy.NewReplacer()
 
-	// Replace {env.*} placeholders for all fields
+	// Replace placeholders (supports {env.*}, {file.*}, etc.)
 	p.Host = strings.TrimSpace(repl.ReplaceAll(p.Host, ""))
 	p.APIKey = strings.TrimSpace(repl.ReplaceAll(p.APIKey, ""))
 	p.APISecretKey = strings.TrimSpace(repl.ReplaceAll(p.APISecretKey, ""))
 	p.DNSService = strings.TrimSpace(repl.ReplaceAll(p.DNSService, ""))
 	p.EntryDescription = strings.TrimSpace(repl.ReplaceAll(p.EntryDescription, ""))
-
-	// Replace {file.*} placeholders for API credentials
-	p.APIKey = replaceFilePlaceholder(p.APIKey, logger)
-	p.APISecretKey = replaceFilePlaceholder(p.APISecretKey, logger)
 
 	switch strings.ToLower(p.DNSService) {
 	case "dnsmasq":
@@ -93,6 +85,7 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 		return fmt.Errorf("invalid dns_service %q: must be 'dnsmasq' or 'unbound'", p.DNSService)
 	}
 
+	logger := ctx.Logger()
 	logger.Info("OPNsense DNS provider initialized",
 		zap.String("dns_service", strings.ToLower(p.DNSService)),
 	)
@@ -204,48 +197,6 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 // DeleteRecords deletes the records from the zone.
 func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
 	return p.provider.DeleteRecords(ctx, zone, records)
-}
-
-// replaceFilePlaceholder replaces {file.*} placeholders with file contents.
-// For example, {file./path/to/secret} will be replaced with the contents of /path/to/secret.
-func replaceFilePlaceholder(s string, logger *zap.Logger) string {
-	const prefix = "{file."
-	const suffix = "}"
-
-	logger.Debug("replaceFilePlaceholder called",
-		zap.String("input", s),
-		zap.Bool("has_prefix", strings.HasPrefix(s, prefix)),
-		zap.Bool("has_suffix", strings.HasSuffix(s, suffix)),
-	)
-
-	if !strings.HasPrefix(s, prefix) || !strings.HasSuffix(s, suffix) {
-		logger.Debug("replaceFilePlaceholder: not a file placeholder, returning as-is")
-		return s
-	}
-
-	filePath := strings.TrimPrefix(s, prefix)
-	filePath = strings.TrimSuffix(filePath, suffix)
-
-	logger.Debug("reading secret from file", zap.String("path", filePath))
-
-	contents, err := os.ReadFile(filePath)
-	if err != nil {
-		logger.Error("failed to read secret file", zap.String("path", filePath), zap.Error(err))
-		return s
-	}
-
-	// Log SHA256 hash of content to help debug without exposing secrets
-	hash := sha256.Sum256(contents)
-	hashStr := hex.EncodeToString(hash[:])
-
-	result := strings.TrimSpace(string(contents))
-	logger.Debug("loaded secret from file",
-		zap.String("path", filePath),
-		zap.Int("length", len(result)),
-		zap.String("sha256", hashStr),
-	)
-
-	return result
 }
 
 // Interface guards
