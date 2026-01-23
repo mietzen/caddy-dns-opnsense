@@ -199,4 +199,4 @@ xcaddy build \
 2. Click the API-Key Symbol (Postage Stamp?) to create a API Key and click yes.
    	    
    <img width="600" height="250" alt="image" src="https://github.com/user-attachments/assets/90ae8565-729b-451f-9a78-f61a18a6b05a" />
-4. Open the downloaded file and copy the API key and secret
+3. Open the downloaded file and copy the API key and secret
