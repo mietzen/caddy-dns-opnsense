@@ -212,7 +212,14 @@ func replaceFilePlaceholder(s string, logger *zap.Logger) string {
 	const prefix = "{file."
 	const suffix = "}"
 
+	logger.Debug("replaceFilePlaceholder called",
+		zap.String("input", s),
+		zap.Bool("has_prefix", strings.HasPrefix(s, prefix)),
+		zap.Bool("has_suffix", strings.HasSuffix(s, suffix)),
+	)
+
 	if !strings.HasPrefix(s, prefix) || !strings.HasSuffix(s, suffix) {
+		logger.Debug("replaceFilePlaceholder: not a file placeholder, returning as-is")
 		return s
 	}
 
