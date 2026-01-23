@@ -2,6 +2,8 @@ package opnsense
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"strings"
@@ -54,6 +56,7 @@ func (Provider) CaddyModule() caddy.ModuleInfo {
 
 // Provision sets up the module. Implements caddy.Provisioner.
 func (p *Provider) Provision(ctx caddy.Context) error {
+	logger := ctx.Logger()
 	repl := caddy.NewReplacer()
 
 	// Replace {env.*} placeholders for all fields
@@ -64,8 +67,8 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 	p.EntryDescription = strings.TrimSpace(repl.ReplaceAll(p.EntryDescription, ""))
 
 	// Replace {file.*} placeholders for API credentials
-	p.APIKey = replaceFilePlaceholder(p.APIKey)
-	p.APISecretKey = replaceFilePlaceholder(p.APISecretKey)
+	p.APIKey = replaceFilePlaceholder(p.APIKey, logger)
+	p.APISecretKey = replaceFilePlaceholder(p.APISecretKey, logger)
 
 	switch strings.ToLower(p.DNSService) {
 	case "dnsmasq":
@@ -89,8 +92,6 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 	default:
 		return fmt.Errorf("invalid dns_service %q: must be 'dnsmasq' or 'unbound'", p.DNSService)
 	}
-
-	logger := ctx.Logger()
 
 	logger.Info("OPNsense DNS provider initialized",
 		zap.String("dns_service", strings.ToLower(p.DNSService)),
@@ -207,7 +208,7 @@ func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []lib
 
 // replaceFilePlaceholder replaces {file.*} placeholders with file contents.
 // For example, {file./path/to/secret} will be replaced with the contents of /path/to/secret.
-func replaceFilePlaceholder(s string) string {
+func replaceFilePlaceholder(s string, logger *zap.Logger) string {
 	const prefix = "{file."
 	const suffix = "}"
 
@@ -218,12 +219,26 @@ func replaceFilePlaceholder(s string) string {
 	filePath := strings.TrimPrefix(s, prefix)
 	filePath = strings.TrimSuffix(filePath, suffix)
 
+	logger.Debug("reading secret from file", zap.String("path", filePath))
+
 	contents, err := os.ReadFile(filePath)
 	if err != nil {
+		logger.Error("failed to read secret file", zap.String("path", filePath), zap.Error(err))
 		return s
 	}
 
-	return strings.TrimSpace(string(contents))
+	// Log SHA256 hash of content to help debug without exposing secrets
+	hash := sha256.Sum256(contents)
+	hashStr := hex.EncodeToString(hash[:])
+
+	result := strings.TrimSpace(string(contents))
+	logger.Debug("loaded secret from file",
+		zap.String("path", filePath),
+		zap.Int("length", len(result)),
+		zap.String("sha256", hashStr),
+	)
+
+	return result
 }
 
 // Interface guards
