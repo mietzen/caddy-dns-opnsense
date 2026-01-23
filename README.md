@@ -62,7 +62,7 @@ or with the Caddyfile:
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET}
 			dns_service dnsmasq # or unbound
-			insecure # Optional: skip TLS verification for self-signed certs
+			insecure true # Optional: skip TLS verification for self-signed certs
 			entry_description Managed by Caddy # Optional
 		}
 		domains {
@@ -88,7 +88,7 @@ Here an example using porkbun, but you can use any of the available [caddy-dns](
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET}
 			dns_service dnsmasq # or unbound
-			insecure # Optional: skip TLS verification for self-signed certs
+			insecure true # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
 			example.com
@@ -120,7 +120,7 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 			api_key {env.OPNSENSE_API_KEY}
 			api_secret_key {env.OPNSENSE_API_SECRET}
 			dns_service dnsmasq # or unbound
-			insecure # Optional: skip TLS verification for self-signed certs
+			insecure true # Optional: skip TLS verification for self-signed certs
 		}
 		domains {
 			example.com
