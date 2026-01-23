@@ -3,6 +3,7 @@ package opnsense
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/caddyserver/caddy/v2"
@@ -54,11 +55,17 @@ func (Provider) CaddyModule() caddy.ModuleInfo {
 // Provision sets up the module. Implements caddy.Provisioner.
 func (p *Provider) Provision(ctx caddy.Context) error {
 	repl := caddy.NewReplacer()
+
+	// Replace {env.*} placeholders for all fields
 	p.Host = strings.TrimSpace(repl.ReplaceAll(p.Host, ""))
 	p.APIKey = strings.TrimSpace(repl.ReplaceAll(p.APIKey, ""))
 	p.APISecretKey = strings.TrimSpace(repl.ReplaceAll(p.APISecretKey, ""))
 	p.DNSService = strings.TrimSpace(repl.ReplaceAll(p.DNSService, ""))
 	p.EntryDescription = strings.TrimSpace(repl.ReplaceAll(p.EntryDescription, ""))
+
+	// Replace {file.*} placeholders for API credentials
+	p.APIKey = replaceFilePlaceholder(p.APIKey)
+	p.APISecretKey = replaceFilePlaceholder(p.APISecretKey)
 
 	switch strings.ToLower(p.DNSService) {
 	case "dnsmasq":
@@ -196,6 +203,27 @@ func (p *Provider) SetRecords(ctx context.Context, zone string, records []libdns
 // DeleteRecords deletes the records from the zone.
 func (p *Provider) DeleteRecords(ctx context.Context, zone string, records []libdns.Record) ([]libdns.Record, error) {
 	return p.provider.DeleteRecords(ctx, zone, records)
+}
+
+// replaceFilePlaceholder replaces {file.*} placeholders with file contents.
+// For example, {file./path/to/secret} will be replaced with the contents of /path/to/secret.
+func replaceFilePlaceholder(s string) string {
+	const prefix = "{file."
+	const suffix = "}"
+
+	if !strings.HasPrefix(s, prefix) || !strings.HasSuffix(s, suffix) {
+		return s
+	}
+
+	filePath := strings.TrimPrefix(s, prefix)
+	filePath = strings.TrimSuffix(filePath, suffix)
+
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return s
+	}
+
+	return strings.TrimSpace(string(contents))
 }
 
 // Interface guards

@@ -108,6 +108,65 @@ jobs:
           echo "Validating requests..."
           ./test_assets/validate_requests -log test_assets/requests_unbound.json -service unbound
 
+      - name: Integration test - env placeholders
+        run: |
+          echo "Starting mock OPNsense API server for env placeholder test..."
+          ./test_assets/mock_opnsense -port 8443 -log test_assets/requests_env.json &
+          MOCK_PID=$!
+          sleep 1
+
+          echo "Starting Caddy with env placeholder config..."
+          OPNSENSE_HOST=localhost:8443 \
+          OPNSENSE_API_KEY=test-api-key \
+          OPNSENSE_API_SECRET=test-api-secret \
+          ./caddy run --config test_assets/Caddyfile.env &
+          CADDY_PID=$!
+
+          echo "Waiting for dynamic DNS update cycle..."
+          sleep 5
+
+          echo "Stopping Caddy..."
+          kill $CADDY_PID 2>/dev/null || true
+          sleep 1
+
+          echo "Stopping mock server..."
+          kill $MOCK_PID 2>/dev/null || true
+
+          echo "Validating requests..."
+          ./test_assets/validate_requests -log test_assets/requests_env.json -service dnsmasq
+
+      - name: Integration test - file placeholders
+        run: |
+          echo "Creating secret files..."
+          echo -n "test-api-key" > /tmp/opnsense_api_key
+          echo -n "test-api-secret" > /tmp/opnsense_api_secret
+
+          echo "Starting mock OPNsense API server for file placeholder test..."
+          ./test_assets/mock_opnsense -port 8443 -log test_assets/requests_file.json &
+          MOCK_PID=$!
+          sleep 1
+
+          echo "Starting Caddy with file placeholder config..."
+          OPNSENSE_HOST=localhost:8443 \
+          ./caddy run --config test_assets/Caddyfile.file &
+          CADDY_PID=$!
+
+          echo "Waiting for dynamic DNS update cycle..."
+          sleep 5
+
+          echo "Stopping Caddy..."
+          kill $CADDY_PID 2>/dev/null || true
+          sleep 1
+
+          echo "Stopping mock server..."
+          kill $MOCK_PID 2>/dev/null || true
+
+          echo "Cleaning up secret files..."
+          rm -f /tmp/opnsense_api_key /tmp/opnsense_api_secret
+
+          echo "Validating requests..."
+          ./test_assets/validate_requests -log test_assets/requests_file.json -service dnsmasq
+
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v6
@@ -116,3 +175,5 @@ jobs:
           path: |
             test_assets/requests_dnsmasq.json
             test_assets/requests_unbound.json
+            test_assets/requests_env.json
+            test_assets/requests_file.json
