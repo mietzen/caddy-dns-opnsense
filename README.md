@@ -25,7 +25,7 @@ To use this module for the internal domain overwrite, together with [mholt/caddy
 				"name": "opnsense",
 				"host": "{env.OPNSENSE_HOSTNAME}",
 				"api_key": "{env.OPNSENSE_API_KEY}",
-				"api_secret_key": "{env.OPNSENSE_API_SECRET}",
+				"api_secret_key": "{env.OPNSENSE_API_SECRET_KEY}",
 				"dns_service": "dnsmasq",
 				"insecure": true,
 				"entry_description": "Managed by Caddy"
@@ -60,7 +60,7 @@ or with the Caddyfile:
 		provider opnsense {
 			host {env.OPNSENSE_HOSTNAME}
 			api_key {env.OPNSENSE_API_KEY}
-			api_secret_key {env.OPNSENSE_API_SECRET}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
 			insecure true # Optional: skip TLS verification for self-signed certs
 			entry_description Managed by Caddy # Optional
@@ -86,7 +86,7 @@ Here an example using porkbun, but you can use any of the available [caddy-dns](
 		provider opnsense {
 			host {env.OPNSENSE_HOSTNAME}
 			api_key {env.OPNSENSE_API_KEY}
-			api_secret_key {env.OPNSENSE_API_SECRET}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
 			insecure true # Optional: skip TLS verification for self-signed certs
 		}
@@ -118,7 +118,7 @@ If you want to use this inside a docker container use the `static` `ip_source` m
 		provider opnsense {
 			host {env.OPNSENSE_HOSTNAME}
 			api_key {env.OPNSENSE_API_KEY}
-			api_secret_key {env.OPNSENSE_API_SECRET}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
 			dns_service dnsmasq # or unbound
 			insecure true # Optional: skip TLS verification for self-signed certs
 		}

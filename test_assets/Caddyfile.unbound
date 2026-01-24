@@ -4,7 +4,7 @@
 		provider opnsense {
 			host {$OPNSENSE_HOST}
 			api_key {$OPNSENSE_API_KEY}
-			api_secret_key {$OPNSENSE_API_SECRET}
+			api_secret_key {$OPNSENSE_API_SECRET_KEY}
 			dns_service unbound
 			insecure true
 			entry_description "Managed by Caddy Test"
