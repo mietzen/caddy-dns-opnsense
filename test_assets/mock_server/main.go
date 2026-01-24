@@ -30,12 +30,44 @@ type RequestLog struct {
 	Body      string            `json:"body,omitempty"`
 }
 
+// dnsmasqHost represents a dnsmasq host override record
+type dnsmasqHost struct {
+	UUID   string `json:"uuid"`
+	Host   string `json:"host"`
+	Domain string `json:"domain"`
+	IP     string `json:"ip"`
+	Descr  string `json:"descr"`
+}
+
+// unboundHost represents an unbound host override record
+type unboundHost struct {
+	UUID        string `json:"uuid"`
+	Hostname    string `json:"hostname"`
+	Domain      string `json:"domain"`
+	Server      string `json:"server"`
+	Description string `json:"description"`
+}
+
 var (
 	requestLogs []RequestLog
 	logMutex    sync.Mutex
 	logFile     string
 	dnsService  string
+
+	// Stateful record tracking
+	dnsmasqHosts     = make(map[string]dnsmasqHost)
+	unboundHosts     = make(map[string]unboundHost)
+	hostsMutex       sync.RWMutex
+	uuidCounter      int
+	uuidCounterMutex sync.Mutex
 )
+
+func generateUUID() string {
+	uuidCounterMutex.Lock()
+	defer uuidCounterMutex.Unlock()
+	uuidCounter++
+	return fmt.Sprintf("test-uuid-%03d", uuidCounter)
+}
 
 func main() {
 	port := flag.Int("port", 8443, "Port to listen on")
@@ -155,23 +187,104 @@ func handleDnsmasq(w http.ResponseWriter, r *http.Request, body []byte) {
 
 	switch {
 	case path == "settings/search_host" && r.Method == http.MethodGet:
-		// Return empty list initially - Caddy will add records
+		// Return all stored hosts
+		hostsMutex.RLock()
+		rows := make([]dnsmasqHost, 0, len(dnsmasqHosts))
+		for _, h := range dnsmasqHosts {
+			rows = append(rows, h)
+		}
+		hostsMutex.RUnlock()
+		log.Printf("search_host returning %d hosts", len(rows))
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"rows": []interface{}{},
+			"rows": rows,
 		})
 
 	case path == "settings/add_host" && r.Method == http.MethodPost:
+		// Parse the request body to extract host data
+		var hostData struct {
+			Host struct {
+				Host   string `json:"host"`
+				Domain string `json:"domain"`
+				IP     string `json:"ip"`
+				Descr  string `json:"descr"`
+			} `json:"host"`
+		}
+		if err := json.Unmarshal(body, &hostData); err != nil {
+			log.Printf("Error parsing add_host body: %v", err)
+		}
+
+		uuid := generateUUID()
+		host := dnsmasqHost{
+			UUID:   uuid,
+			Host:   hostData.Host.Host,
+			Domain: hostData.Host.Domain,
+			IP:     hostData.Host.IP,
+			Descr:  hostData.Host.Descr,
+		}
+
+		hostsMutex.Lock()
+		dnsmasqHosts[uuid] = host
+		hostsMutex.Unlock()
+
+		log.Printf("add_host: %s.%s -> %s (uuid: %s, descr: %s)", host.Host, host.Domain, host.IP, uuid, host.Descr)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "saved",
-			"uuid":   "test-uuid-001",
+			"uuid":   uuid,
+		})
+
+	case strings.HasPrefix(path, "settings/set_host/") && r.Method == http.MethodPost:
+		// Extract UUID from path
+		uuid := strings.TrimPrefix(path, "settings/set_host/")
+
+		// Parse the request body to extract host data
+		var hostData struct {
+			Host struct {
+				Host   string `json:"host"`
+				Domain string `json:"domain"`
+				IP     string `json:"ip"`
+				Descr  string `json:"descr"`
+			} `json:"host"`
+		}
+		if err := json.Unmarshal(body, &hostData); err != nil {
+			log.Printf("Error parsing set_host body: %v", err)
+		}
+
+		host := dnsmasqHost{
+			UUID:   uuid,
+			Host:   hostData.Host.Host,
+			Domain: hostData.Host.Domain,
+			IP:     hostData.Host.IP,
+			Descr:  hostData.Host.Descr,
+		}
+
+		hostsMutex.Lock()
+		dnsmasqHosts[uuid] = host
+		hostsMutex.Unlock()
+
+		log.Printf("set_host: %s.%s -> %s (uuid: %s, descr: %s)", host.Host, host.Domain, host.IP, uuid, host.Descr)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"result": "saved",
 		})
 
 	case strings.HasPrefix(path, "settings/del_host/") && r.Method == http.MethodPost:
+		// Extract UUID from path
+		uuid := strings.TrimPrefix(path, "settings/del_host/")
+
+		hostsMutex.Lock()
+		if host, ok := dnsmasqHosts[uuid]; ok {
+			log.Printf("del_host: %s.%s (uuid: %s)", host.Host, host.Domain, uuid)
+			delete(dnsmasqHosts, uuid)
+		} else {
+			log.Printf("del_host: uuid %s not found", uuid)
+		}
+		hostsMutex.Unlock()
+
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "deleted",
 		})
 
 	case path == "service/reconfigure" && r.Method == http.MethodPost:
+		log.Printf("reconfigure: current hosts count = %d", len(dnsmasqHosts))
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "ok",
 		})
@@ -187,23 +300,104 @@ func handleUnbound(w http.ResponseWriter, r *http.Request, body []byte) {
 
 	switch {
 	case path == "settings/search_host_override" && r.Method == http.MethodPost:
-		// Return empty list initially - Caddy will add records
+		// Return all stored hosts
+		hostsMutex.RLock()
+		rows := make([]unboundHost, 0, len(unboundHosts))
+		for _, h := range unboundHosts {
+			rows = append(rows, h)
+		}
+		hostsMutex.RUnlock()
+		log.Printf("search_host_override returning %d hosts", len(rows))
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"rows": []interface{}{},
+			"rows": rows,
 		})
 
 	case path == "settings/add_host_override" && r.Method == http.MethodPost:
+		// Parse the request body to extract host data
+		var hostData struct {
+			HostOverride struct {
+				Hostname    string `json:"hostname"`
+				Domain      string `json:"domain"`
+				Server      string `json:"server"`
+				Description string `json:"description"`
+			} `json:"host_override"`
+		}
+		if err := json.Unmarshal(body, &hostData); err != nil {
+			log.Printf("Error parsing add_host_override body: %v", err)
+		}
+
+		uuid := generateUUID()
+		host := unboundHost{
+			UUID:        uuid,
+			Hostname:    hostData.HostOverride.Hostname,
+			Domain:      hostData.HostOverride.Domain,
+			Server:      hostData.HostOverride.Server,
+			Description: hostData.HostOverride.Description,
+		}
+
+		hostsMutex.Lock()
+		unboundHosts[uuid] = host
+		hostsMutex.Unlock()
+
+		log.Printf("add_host_override: %s.%s -> %s (uuid: %s, descr: %s)", host.Hostname, host.Domain, host.Server, uuid, host.Description)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "saved",
-			"uuid":   "test-uuid-001",
+			"uuid":   uuid,
+		})
+
+	case strings.HasPrefix(path, "settings/set_host_override/") && r.Method == http.MethodPost:
+		// Extract UUID from path
+		uuid := strings.TrimPrefix(path, "settings/set_host_override/")
+
+		// Parse the request body to extract host data
+		var hostData struct {
+			HostOverride struct {
+				Hostname    string `json:"hostname"`
+				Domain      string `json:"domain"`
+				Server      string `json:"server"`
+				Description string `json:"description"`
+			} `json:"host_override"`
+		}
+		if err := json.Unmarshal(body, &hostData); err != nil {
+			log.Printf("Error parsing set_host_override body: %v", err)
+		}
+
+		host := unboundHost{
+			UUID:        uuid,
+			Hostname:    hostData.HostOverride.Hostname,
+			Domain:      hostData.HostOverride.Domain,
+			Server:      hostData.HostOverride.Server,
+			Description: hostData.HostOverride.Description,
+		}
+
+		hostsMutex.Lock()
+		unboundHosts[uuid] = host
+		hostsMutex.Unlock()
+
+		log.Printf("set_host_override: %s.%s -> %s (uuid: %s, descr: %s)", host.Hostname, host.Domain, host.Server, uuid, host.Description)
+		_ = json.NewEncoder(w).Encode(map[string]string{
+			"result": "saved",
 		})
 
 	case strings.HasPrefix(path, "settings/del_host_override/") && r.Method == http.MethodPost:
+		// Extract UUID from path
+		uuid := strings.TrimPrefix(path, "settings/del_host_override/")
+
+		hostsMutex.Lock()
+		if host, ok := unboundHosts[uuid]; ok {
+			log.Printf("del_host_override: %s.%s (uuid: %s)", host.Hostname, host.Domain, uuid)
+			delete(unboundHosts, uuid)
+		} else {
+			log.Printf("del_host_override: uuid %s not found", uuid)
+		}
+		hostsMutex.Unlock()
+
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"result": "deleted",
 		})
 
 	case path == "service/reconfigure" && r.Method == http.MethodPost:
+		log.Printf("reconfigure: current hosts count = %d", len(unboundHosts))
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"status": "ok",
 		})

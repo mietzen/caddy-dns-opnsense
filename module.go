@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/caddyserver/caddy/v2"
 	"github.com/caddyserver/caddy/v2/caddyconfig/caddyfile"
@@ -35,6 +36,8 @@ type Provider struct {
 	Insecure bool `json:"insecure,omitempty"`
 	// EntryDescription is set on created host entries (defaults to "Managed by Caddy")
 	EntryDescription string `json:"entry_description,omitempty"`
+	// CleanupDelay is the delay after last SetRecords before orphan cleanup runs (default "5s")
+	CleanupDelay string `json:"cleanup_delay,omitempty"`
 
 	provider dnsProvider
 }
@@ -61,25 +64,38 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 	p.APISecretKey = strings.TrimSpace(repl.ReplaceAll(p.APISecretKey, ""))
 	p.DNSService = strings.TrimSpace(repl.ReplaceAll(p.DNSService, ""))
 	p.EntryDescription = strings.TrimSpace(repl.ReplaceAll(p.EntryDescription, ""))
+	p.CleanupDelay = strings.TrimSpace(repl.ReplaceAll(p.CleanupDelay, ""))
+
+	// Parse cleanup delay
+	var cleanupDelay time.Duration
+	if p.CleanupDelay != "" {
+		var err error
+		cleanupDelay, err = time.ParseDuration(p.CleanupDelay)
+		if err != nil {
+			return fmt.Errorf("invalid cleanup_delay %q: %w", p.CleanupDelay, err)
+		}
+	}
 
 	switch strings.ToLower(p.DNSService) {
 	case "dnsmasq":
 		p.provider = &opnsensednsmasq.Provider{
-			Host:        p.Host,
-			APIKey:      p.APIKey,
-			APISecret:   p.APISecretKey,
-			Insecure:    p.Insecure,
-			Description: p.EntryDescription,
-			Logger:      ctx.Logger(),
+			Host:         p.Host,
+			APIKey:       p.APIKey,
+			APISecret:    p.APISecretKey,
+			Insecure:     p.Insecure,
+			Description:  p.EntryDescription,
+			CleanupDelay: cleanupDelay,
+			Logger:       ctx.Logger(),
 		}
 	case "unbound":
 		p.provider = &opnsenseunbound.Provider{
-			Host:        p.Host,
-			APIKey:      p.APIKey,
-			APISecret:   p.APISecretKey,
-			Insecure:    p.Insecure,
-			Description: p.EntryDescription,
-			Logger:      ctx.Logger(),
+			Host:         p.Host,
+			APIKey:       p.APIKey,
+			APISecret:    p.APISecretKey,
+			Insecure:     p.Insecure,
+			Description:  p.EntryDescription,
+			CleanupDelay: cleanupDelay,
+			Logger:       ctx.Logger(),
 		}
 	default:
 		return fmt.Errorf("invalid dns_service %q: must be 'dnsmasq' or 'unbound'", p.DNSService)
@@ -108,6 +124,7 @@ func (p *Provider) Provision(ctx caddy.Context) error {
 //	    dns_service <dnsmasq|unbound>
 //	    insecure <true|false>
 //	    entry_description <description>
+//	    cleanup_delay <duration>
 //	}
 func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 	for d.Next() {
@@ -155,6 +172,13 @@ func (p *Provider) UnmarshalCaddyfile(d *caddyfile.Dispenser) error {
 			case "entry_description":
 				if d.NextArg() {
 					p.EntryDescription = d.Val()
+				}
+				if d.NextArg() {
+					return d.ArgErr()
+				}
+			case "cleanup_delay":
+				if d.NextArg() {
+					p.CleanupDelay = d.Val()
 				}
 				if d.NextArg() {
 					return d.ArgErr()

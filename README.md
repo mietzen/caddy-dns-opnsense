@@ -152,6 +152,42 @@ You can also combine this with [caddy-docker-proxy](https://github.com/lucaslore
 
 You will automatically get local DNS entries in OPNsense.
 
+## Orphan Record Cleanup
+
+When domains are removed from your Caddyfile, the corresponding DNS records in OPNsense are automatically cleaned up. This feature:
+
+- **Runs automatically** after config changes (5 second delay by default)
+- **Only affects managed records** - records with matching `entry_description` are candidates for cleanup
+- **Zone-scoped** - only cleans up records in zones that were touched during the current session
+
+### Customizing Cleanup Delay
+
+You can adjust the cleanup delay (time after last SetRecords before cleanup runs):
+
+```text
+{
+	dynamic_dns {
+		provider opnsense {
+			host {env.OPNSENSE_HOSTNAME}
+			api_key {env.OPNSENSE_API_KEY}
+			api_secret_key {env.OPNSENSE_API_SECRET_KEY}
+			dns_service dnsmasq
+			cleanup_delay 10s  # Wait 10 seconds before cleanup (default: 5s)
+		}
+		...
+	}
+}
+```
+
+### How It Works
+
+1. When Caddy reloads with a changed config, `SetRecords` is called for each domain
+2. The provider tracks which records are actively managed
+3. After the cleanup delay (with no new SetRecords calls), cleanup runs:
+   - Queries all records with the configured `entry_description`
+   - Deletes records that weren't touched during the current session
+   - Only affects zones that were modified
+
 ## Building with `xcaddy`
 
 Use [`xcaddy`](https://caddyserver.com/docs/build#xcaddy) to build the module:

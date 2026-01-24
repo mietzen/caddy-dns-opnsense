@@ -43,6 +43,8 @@ type UnboundAddHostRequest struct {
 func main() {
 	logFile := flag.String("log", "requests.json", "Request log file to validate")
 	dnsService := flag.String("service", "dnsmasq", "DNS service: dnsmasq or unbound")
+	validateCleanup := flag.Bool("cleanup", false, "Validate orphan cleanup behavior")
+	expectedDeletes := flag.Int("expected-deletes", 0, "Expected number of delete operations during cleanup")
 	flag.Parse()
 
 	data, err := os.ReadFile(*logFile)
@@ -63,9 +65,17 @@ func main() {
 
 	switch *dnsService {
 	case "dnsmasq":
-		errors = validateDnsmasq(logs)
+		if *validateCleanup {
+			errors = validateDnsmasqCleanup(logs, *expectedDeletes)
+		} else {
+			errors = validateDnsmasq(logs)
+		}
 	case "unbound":
-		errors = validateUnbound(logs)
+		if *validateCleanup {
+			errors = validateUnboundCleanup(logs, *expectedDeletes)
+		} else {
+			errors = validateUnbound(logs)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown service: %s\n", *dnsService)
 		os.Exit(1)
@@ -126,6 +136,71 @@ func validateDnsmasq(logs []RequestLog) []string {
 			errors = append(errors, fmt.Sprintf("Missing expected request: %s %s",
 				expectations[i].method, expectations[i].pathPart))
 		}
+	}
+
+	return errors
+}
+
+func validateDnsmasqCleanup(logs []RequestLog, expectedDeletes int) []string {
+	var errors []string
+
+	// Expected cleanup sequence:
+	// 1. GET /api/dnsmasq/settings/search_host (find orphans)
+	// 2. POST /api/dnsmasq/settings/del_host/<uuid> (delete orphaned record(s))
+	// 3. POST /api/dnsmasq/service/reconfigure
+
+	var searchCount, deleteCount, reconfigureCount int
+	var searchBeforeDelete bool
+	var lastSearchTime, firstDeleteTime string
+
+	for _, log := range logs {
+		// Check for Authorization header
+		if _, ok := log.Headers["Authorization"]; !ok {
+			errors = append(errors, fmt.Sprintf("Request to %s missing Authorization header", log.Path))
+		}
+
+		if log.Method == "GET" && strings.Contains(log.Path, "/api/dnsmasq/settings/search_host") {
+			searchCount++
+			lastSearchTime = log.Timestamp
+			fmt.Printf("OK: %s %s (search for orphans)\n", log.Method, log.Path)
+		}
+
+		if log.Method == "POST" && strings.Contains(log.Path, "/api/dnsmasq/settings/del_host/") {
+			deleteCount++
+			if firstDeleteTime == "" {
+				firstDeleteTime = log.Timestamp
+			}
+			if lastSearchTime != "" && lastSearchTime < log.Timestamp {
+				searchBeforeDelete = true
+			}
+			uuid := strings.TrimPrefix(log.Path, "/api/dnsmasq/settings/del_host/")
+			fmt.Printf("OK: %s %s (deleting orphan uuid: %s)\n", log.Method, log.Path, uuid)
+		}
+
+		if log.Method == "POST" && strings.Contains(log.Path, "/api/dnsmasq/service/reconfigure") {
+			reconfigureCount++
+			fmt.Printf("OK: %s %s\n", log.Method, log.Path)
+		}
+	}
+
+	// Validate cleanup behavior
+	if searchCount == 0 {
+		errors = append(errors, "Missing search_host request before cleanup")
+	}
+
+	if expectedDeletes > 0 {
+		if deleteCount != expectedDeletes {
+			errors = append(errors, fmt.Sprintf("Expected %d delete operations, got %d", expectedDeletes, deleteCount))
+		}
+		if !searchBeforeDelete {
+			errors = append(errors, "search_host should be called before del_host during cleanup")
+		}
+	} else if deleteCount > 0 {
+		fmt.Printf("Found %d delete operations\n", deleteCount)
+	}
+
+	if reconfigureCount == 0 && deleteCount > 0 {
+		errors = append(errors, "Missing reconfigure after delete operations")
 	}
 
 	return errors
@@ -197,6 +272,71 @@ func validateUnbound(logs []RequestLog) []string {
 			errors = append(errors, fmt.Sprintf("Missing expected request: %s %s",
 				expectations[i].method, expectations[i].pathPart))
 		}
+	}
+
+	return errors
+}
+
+func validateUnboundCleanup(logs []RequestLog, expectedDeletes int) []string {
+	var errors []string
+
+	// Expected cleanup sequence:
+	// 1. POST /api/unbound/settings/search_host_override (find orphans)
+	// 2. POST /api/unbound/settings/del_host_override/<uuid> (delete orphaned record(s))
+	// 3. POST /api/unbound/service/reconfigure
+
+	var searchCount, deleteCount, reconfigureCount int
+	var searchBeforeDelete bool
+	var lastSearchTime, firstDeleteTime string
+
+	for _, log := range logs {
+		// Check for Authorization header
+		if _, ok := log.Headers["Authorization"]; !ok {
+			errors = append(errors, fmt.Sprintf("Request to %s missing Authorization header", log.Path))
+		}
+
+		if log.Method == "POST" && strings.Contains(log.Path, "/api/unbound/settings/search_host_override") {
+			searchCount++
+			lastSearchTime = log.Timestamp
+			fmt.Printf("OK: %s %s (search for orphans)\n", log.Method, log.Path)
+		}
+
+		if log.Method == "POST" && strings.Contains(log.Path, "/api/unbound/settings/del_host_override/") {
+			deleteCount++
+			if firstDeleteTime == "" {
+				firstDeleteTime = log.Timestamp
+			}
+			if lastSearchTime != "" && lastSearchTime < log.Timestamp {
+				searchBeforeDelete = true
+			}
+			uuid := strings.TrimPrefix(log.Path, "/api/unbound/settings/del_host_override/")
+			fmt.Printf("OK: %s %s (deleting orphan uuid: %s)\n", log.Method, log.Path, uuid)
+		}
+
+		if log.Method == "POST" && strings.Contains(log.Path, "/api/unbound/service/reconfigure") {
+			reconfigureCount++
+			fmt.Printf("OK: %s %s\n", log.Method, log.Path)
+		}
+	}
+
+	// Validate cleanup behavior
+	if searchCount == 0 {
+		errors = append(errors, "Missing search_host_override request before cleanup")
+	}
+
+	if expectedDeletes > 0 {
+		if deleteCount != expectedDeletes {
+			errors = append(errors, fmt.Sprintf("Expected %d delete operations, got %d", expectedDeletes, deleteCount))
+		}
+		if !searchBeforeDelete {
+			errors = append(errors, "search_host_override should be called before del_host_override during cleanup")
+		}
+	} else if deleteCount > 0 {
+		fmt.Printf("Found %d delete operations\n", deleteCount)
+	}
+
+	if reconfigureCount == 0 && deleteCount > 0 {
+		errors = append(errors, "Missing reconfigure after delete operations")
 	}
 
 	return errors
