@@ -12,3 +12,4 @@ locks/*
 test_assets/mock_opnsense
 test_assets/validate_requests
 test_assets/requests_*.json
+dynamic_dns/managed_domains.json
