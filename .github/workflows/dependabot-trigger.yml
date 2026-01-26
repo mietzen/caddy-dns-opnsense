@@ -43,7 +43,6 @@ jobs:
           fi
           git add "$file"
           git commit -m "chore: trigger dependabot check"
-          git push -f
-
+          git push
           git reset --hard HEAD~1
           git push -f
