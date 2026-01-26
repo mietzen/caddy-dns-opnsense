@@ -31,7 +31,7 @@ jobs:
           token: ${{ steps.app-token.outputs.token }}
           fetch-depth: 2
 
-      - name: Touch dependabot config to trigger update
+      - name: Change dependabot config to trigger update
         run: |
           file=".github/dependabot.yml"
 
@@ -43,7 +43,7 @@ jobs:
           fi
           git add "$file"
           git commit -m "chore: trigger dependabot check"
-          git push
+          git push -f
 
           git reset --hard HEAD~1
           git push -f
