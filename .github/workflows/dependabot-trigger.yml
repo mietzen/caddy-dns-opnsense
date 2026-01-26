@@ -1,0 +1,49 @@
+name: Trigger Dependabot
+
+on:
+  workflow_dispatch:
+
+jobs:
+  trigger-dependabot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.DEPENDABOT_TRIGGER_APP_ID }}
+          private-key: ${{ secrets.DEPENDABOT_TRIGGER_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Set Git Committer
+        run: |
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
+
+      - name: Checkout Code
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 2
+
+      - name: Touch dependabot config to trigger update
+        run: |
+          file=".github/dependabot.yml"
+
+          # Check current mode and toggle
+          if [ -x "$file" ]; then
+              chmod -x "$file"
+          else
+              chmod +x "$file"
+          fi
+          git add "$file"
+          git commit -m "chore: trigger dependabot check"
+          git push
+
+          git reset --hard HEAD~1
+          git push -f
