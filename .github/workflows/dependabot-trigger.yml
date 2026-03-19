@@ -7,7 +7,7 @@ jobs:
   trigger-dependabot:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/create-github-app-token@v2
+      - uses: actions/create-github-app-token@v3
         id: app-token
         with:
           app-id: ${{ secrets.DEPENDABOT_TRIGGER_APP_ID }}
