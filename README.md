@@ -188,15 +188,15 @@ xcaddy build \
 1. Create a new API-User under **System** -> **Access** -> **Users**
 	- Set `Scrambled Password` to `True` and make sure `Login shell` is `None`
  	    
-  	  <img width="600" height="1184" alt="image" src="https://github.com/user-attachments/assets/7d574600-5f8b-401e-89a8-3fa5c67e18b5" />
+  	  <img width="600" alt="image" src="https://github.com/user-attachments/assets/7d574600-5f8b-401e-89a8-3fa5c67e18b5" />
   	- Set the Permissions for Dnsmasq to: `Services: Dnsmasq DNS/DHCP: Settings`
    	    
-   	  <img width="600" height="906" alt="image" src="https://github.com/user-attachments/assets/902d0c5e-d6fa-4254-ad56-2bc4e76b3582" />
+   	  <img width="600" alt="image" src="https://github.com/user-attachments/assets/902d0c5e-d6fa-4254-ad56-2bc4e76b3582" />
   	- Set the Permissions for Unbound to: `Services: Unbound (MVC)` & `Services: Unbound DNS: Edit Host and Domain Override`
    	    
-	  <img width="600" height="906" alt="image" src="https://github.com/user-attachments/assets/a24c95e2-c857-4edb-9c21-d54417ed7799" />
+	  <img width="600" alt="image" src="https://github.com/user-attachments/assets/a24c95e2-c857-4edb-9c21-d54417ed7799" />
 	- Click `Save`
 2. Click the API-Key Symbol (Postage Stamp?) to create a API Key and click yes.
    	    
-   <img width="600" height="250" alt="image" src="https://github.com/user-attachments/assets/90ae8565-729b-451f-9a78-f61a18a6b05a" />
+   <img width="600" alt="image" src="https://github.com/user-attachments/assets/90ae8565-729b-451f-9a78-f61a18a6b05a" />
 3. Open the downloaded file and copy the API key and secret
