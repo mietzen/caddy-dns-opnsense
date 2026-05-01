@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/caddyserver/caddy/v2 v2.11.2
 	github.com/libdns/libdns v1.1.1
-	github.com/mietzen/libdns-opnsense-dnsmasq v0.1.0
+	github.com/mietzen/libdns-opnsense-dnsmasq v0.2.0
 	github.com/mietzen/libdns-opnsense-unbound v0.2.0
 	go.uber.org/zap v1.28.0
 )
