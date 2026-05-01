@@ -7,7 +7,7 @@ require (
 	github.com/libdns/libdns v1.1.1
 	github.com/mietzen/libdns-opnsense-dnsmasq v0.1.0
 	github.com/mietzen/libdns-opnsense-unbound v0.1.0
-	go.uber.org/zap v1.27.1
+	go.uber.org/zap v1.28.0
 )
 
 require (
